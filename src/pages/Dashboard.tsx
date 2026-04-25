@@ -105,7 +105,7 @@ export function Dashboard() {
             <span className="text-xl">⏰</span>
             <span className="font-semibold text-ink-900">下一次服药</span>
           </div>
-          <Link to="/today" className="text-sm text-brand-700 font-semibold">
+          <Link to="/reminders" className="text-sm text-brand-700 font-semibold">
             查看完整清单 →
           </Link>
         </div>
@@ -126,7 +126,7 @@ export function Dashboard() {
                 <Button size="xl" onClick={() => takeDose(upcoming.id)}>
                   ✓ 已服药
                 </Button>
-                <Link to="/today">
+                <Link to="/reminders">
                   <Button variant="secondary" size="lg">查看全部</Button>
                 </Link>
               </div>
@@ -183,7 +183,7 @@ export function Dashboard() {
               </ul>
               <div className="mt-3 flex gap-2 flex-wrap">
                 {lowStock.length > 0 && (
-                  <Link to="/inventory">
+                  <Link to="/medications">
                     <Button size="md">去补药</Button>
                   </Link>
                 )}
@@ -209,7 +209,7 @@ export function Dashboard() {
           </div>
         </Card>
 
-        <Link to="/follow-up">
+        <Link to="/reminders">
           <Card className="hover:shadow-glow transition-shadow h-full">
             <div className="flex items-center gap-4">
               <div className="text-4xl">🩺</div>

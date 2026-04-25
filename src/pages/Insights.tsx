@@ -18,6 +18,7 @@ import { useAppStore } from '@/store';
 import { dayjs } from '@/utils/date';
 import { computeHealthScore, generateRecommendations, type SubScore } from '@/utils/healthScore';
 import type { VitalKind } from '@/types';
+import { HealthAgentPanel } from '@/components/domain/HealthAgentPanel';
 
 const KIND_LABEL: Record<VitalKind, { label: string; emoji: string; unit: string }> = {
   blood_pressure: { label: '血压', emoji: '🩸', unit: 'mmHg' },
@@ -138,6 +139,9 @@ export function Insights() {
         </div>
         <SpeakButton text={broadcastText} label="🔊 语音播报" />
       </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5 items-start">
+        <div className="space-y-5 min-w-0">
 
       {/* 1. 综合健康评分 */}
       <section className="rounded-xl2 shadow-soft border border-brand-200 bg-white overflow-hidden">
@@ -324,6 +328,14 @@ export function Insights() {
       <p className="text-xs text-ink-500 text-center pt-4">
         本助手由规则引擎驱动，结果仅供生活管理参考，不构成医疗建议。
       </p>
+
+        </div>
+
+        {/* 右侧 Agent 问答 */}
+        <aside className="xl:sticky xl:top-20">
+          <HealthAgentPanel scoreResult={score} recommendations={recs} />
+        </aside>
+      </div>
 
       {/* Add vital modal */}
       <Modal

@@ -5,17 +5,16 @@ import { useAdherence } from '@/hooks/useAdherence';
 
 const NAV = [
   { to: '/', label: '首页', icon: '🏠' },
-  { to: '/today', label: '今日服药', icon: '⏰' },
-  { to: '/medications', label: '我的药品', icon: '💊' },
-  { to: '/inventory', label: '库存', icon: '📦' },
-  { to: '/follow-up', label: '复诊', icon: '🩺' },
+  { to: '/reminders', label: '提醒中心', icon: '⏰' },
+  { to: '/insights', label: 'AI 助手', icon: '🤖' },
   { to: '/family', label: '家庭群', icon: '👪' },
   { to: '/articles', label: '健康推文', icon: '📰' },
-  { to: '/insights', label: 'AI 助手', icon: '🤖' },
+  { to: '/medications', label: '我的药品', icon: '💊' },
   { to: '/profile', label: '我', icon: '👤' },
 ];
 
-const MOBILE_NAV = [NAV[0], NAV[1], NAV[5], NAV[6], NAV[8]];
+// 移动端 5 个 tab
+const MOBILE_NAV = [NAV[0], NAV[1], NAV[2], NAV[3], NAV[6]];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const fontSize = useAppStore((s) => s.fontSize);

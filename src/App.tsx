@@ -2,12 +2,10 @@ import { useEffect } from 'react';
 import { BrowserRouter, Route, Routes, Navigate } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { Dashboard } from '@/pages/Dashboard';
-import { Today } from '@/pages/Today';
+import { Reminders } from '@/pages/Reminders';
 import { MedicationList } from '@/pages/Medications/MedicationList';
 import { MedicationWizard } from '@/pages/Medications/MedicationWizard';
 import { MedicationDetail } from '@/pages/Medications/MedicationDetail';
-import { Inventory } from '@/pages/Inventory';
-import { FollowUp } from '@/pages/FollowUp';
 import { Insights } from '@/pages/Insights';
 import { Profile } from '@/pages/Profile';
 import { Family } from '@/pages/Family';
@@ -35,15 +33,17 @@ export default function App() {
       <AppShell>
         <Routes>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/today" element={<Today />} />
+          <Route path="/reminders" element={<Reminders />} />
+          {/* 旧路由兼容 */}
+          <Route path="/today" element={<Navigate to="/reminders" replace />} />
+          <Route path="/follow-up" element={<Navigate to="/reminders" replace />} />
+          <Route path="/inventory" element={<Navigate to="/medications" replace />} />
           <Route path="/medications" element={<MedicationList />} />
           <Route path="/medications/new" element={<MedicationWizard />} />
           <Route path="/medications/:id" element={<MedicationDetail />} />
-          <Route path="/inventory" element={<Inventory />} />
-          <Route path="/follow-up" element={<FollowUp />} />
+          <Route path="/insights" element={<Insights />} />
           <Route path="/family" element={<Family />} />
           <Route path="/articles" element={<Articles />} />
-          <Route path="/insights" element={<Insights />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
