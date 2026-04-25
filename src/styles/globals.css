@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-scale: 1;
+  }
+
+  html[data-size='large'] {
+    --font-scale: 1.125; /* 18 / 16 */
+  }
+  html[data-size='xlarge'] {
+    --font-scale: 1.25; /* 20 / 16 */
+  }
+
+  html {
+    font-size: calc(16px * var(--font-scale));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-ink-100 text-ink-900;
+    font-family:
+      'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', system-ui,
+      -apple-system, 'Segoe UI', Roboto, 'Noto Sans CJK SC', sans-serif;
+    min-height: 100vh;
+  }
+
+  button,
+  [role='button'] {
+    /* 适老化：所有按钮最小 48px 触控高度 */
+    min-height: 48px;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-xl2 shadow-soft p-5;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl
+           font-semibold transition-colors select-none
+           focus:outline-none focus:ring-4 focus:ring-brand-200
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    min-height: 48px;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700;
+  }
+
+  .btn-secondary {
+    @apply btn bg-white text-brand-600 border border-brand-200 hover:bg-brand-50;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-ink-700 hover:bg-ink-100;
+  }
+
+  .btn-danger {
+    @apply btn bg-danger text-white hover:opacity-90;
+  }
+
+  .btn-lg {
+    @apply px-6 py-4 text-lg;
+    min-height: 56px;
+  }
+
+  .btn-xl {
+    @apply px-8 py-5 text-xl;
+    min-height: 64px;
+  }
+
+  .input {
+    @apply w-full px-4 py-3 rounded-xl border border-ink-300 bg-white
+           focus:outline-none focus:ring-4 focus:ring-brand-200 focus:border-brand-400;
+    min-height: 48px;
+  }
+
+  .label {
+    @apply block text-ink-700 font-medium mb-2;
+  }
+
+  .tag {
+    @apply inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium;
+  }
+
+  .tag-info {
+    @apply tag bg-brand-50 text-brand-700;
+  }
+
+  .tag-warn {
+    @apply tag bg-amber-50 text-amber-700;
+  }
+
+  .tag-danger {
+    @apply tag bg-red-50 text-red-700;
+  }
+
+  .tag-success {
+    @apply tag bg-emerald-50 text-emerald-700;
+  }
+}
