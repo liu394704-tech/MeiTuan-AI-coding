@@ -7,6 +7,8 @@ import type {
   MedicationEvent,
   FamilyMember,
   FamilyFeedItem,
+  VitalReading,
+  MedicalReport,
 } from '@/types';
 import { dayjs } from '@/utils/date';
 import { generateScheduledEvents } from '@/utils/eventGenerator';
@@ -21,6 +23,8 @@ export interface DbShape {
   followUps: FollowUp[];
   familyMembers: FamilyMember[];
   familyFeed: FamilyFeedItem[];
+  vitals: VitalReading[];
+  reports: MedicalReport[];
 }
 
 export function buildSeed(): DbShape {
@@ -291,6 +295,95 @@ export function buildSeed(): DbShape {
     },
   ];
 
+  // 14 天的生理数据，模拟略偏高且有波动
+  const vitals: VitalReading[] = [];
+  for (let i = 13; i >= 0; i--) {
+    const day = dayjs().subtract(i, 'day');
+    const sysJitter = Math.round((Math.random() - 0.4) * 14);
+    const diaJitter = Math.round((Math.random() - 0.4) * 8);
+    vitals.push({
+      id: `v_bp_${i}`,
+      kind: 'blood_pressure',
+      value: 132 + sysJitter,
+      value2: 84 + diaJitter,
+      unit: 'mmHg',
+      context: '清晨服药前',
+      measuredAt: day.hour(7).minute(30).toISOString(),
+      source: 'device',
+    });
+    vitals.push({
+      id: `v_bg_${i}`,
+      kind: 'blood_glucose',
+      value: parseFloat((6.8 + (Math.random() - 0.4) * 1.2).toFixed(1)),
+      unit: 'mmol/L',
+      context: '空腹',
+      measuredAt: day.hour(7).minute(0).toISOString(),
+      source: 'device',
+    });
+    vitals.push({
+      id: `v_st_${i}`,
+      kind: 'steps',
+      value: Math.round(4500 + Math.random() * 3500),
+      unit: '步',
+      measuredAt: day.hour(22).toISOString(),
+      source: 'device',
+    });
+    vitals.push({
+      id: `v_sl_${i}`,
+      kind: 'sleep_hours',
+      value: parseFloat((6.2 + Math.random() * 1.6).toFixed(1)),
+      unit: '小时',
+      measuredAt: day.hour(8).toISOString(),
+      source: 'device',
+    });
+  }
+  // 心率和体重不是每天都有
+  for (let i = 13; i >= 0; i -= 2) {
+    const day = dayjs().subtract(i, 'day');
+    vitals.push({
+      id: `v_hr_${i}`,
+      kind: 'heart_rate',
+      value: Math.round(72 + (Math.random() - 0.4) * 12),
+      unit: 'bpm',
+      measuredAt: day.hour(7).minute(35).toISOString(),
+      source: 'device',
+    });
+  }
+  vitals.push({
+    id: 'v_wt_recent',
+    kind: 'weight',
+    value: 71.5,
+    unit: 'kg',
+    measuredAt: dayjs().subtract(2, 'day').hour(7).toISOString(),
+    source: 'manual',
+  });
+  vitals.push({
+    id: 'v_wt_prev',
+    kind: 'weight',
+    value: 72.4,
+    unit: 'kg',
+    measuredAt: dayjs().subtract(20, 'day').hour(7).toISOString(),
+    source: 'manual',
+  });
+
+  const reports: MedicalReport[] = [
+    {
+      id: 'rep_1',
+      title: '半年度生化全套检查',
+      hospital: '北京协和医院',
+      reportDate: dayjs().subtract(45, 'day').format('YYYY-MM-DD'),
+      uploadedAt: dayjs().subtract(45, 'day').toISOString(),
+      highlights: [
+        { label: '空腹血糖', value: '7.1 mmol/L', level: 'high' },
+        { label: '糖化血红蛋白 HbA1c', value: '7.2 %', level: 'high' },
+        { label: 'LDL 低密度脂蛋白', value: '3.4 mmol/L', level: 'high' },
+        { label: '肌酐 Scr', value: '88 μmol/L', level: 'normal' },
+        { label: 'eGFR 肾小球滤过率', value: '82 ml/min', level: 'normal' },
+      ],
+      conclusion: '血糖与血脂偏高，建议继续用药并加强生活方式管理；3 个月后复查。',
+    },
+  ];
+
   return {
     users: [user],
     currentUserId: userId,
@@ -301,5 +394,7 @@ export function buildSeed(): DbShape {
     followUps,
     familyMembers,
     familyFeed,
+    vitals,
+    reports,
   };
 }

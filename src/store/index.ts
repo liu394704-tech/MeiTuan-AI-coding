@@ -8,6 +8,8 @@ import type {
   User,
   FamilyMember,
   FamilyFeedItem,
+  VitalReading,
+  MedicalReport,
 } from '@/types';
 import {
   eventService,
@@ -16,6 +18,8 @@ import {
   inventoryService,
   medicationService,
   userService,
+  vitalService,
+  reportService,
 } from '@/services';
 import { voiceService, type VoicePrefs } from '@/services/voice';
 
@@ -29,6 +33,13 @@ interface AppState {
   followUps: FollowUp[];
   familyMembers: FamilyMember[];
   familyFeed: FamilyFeedItem[];
+  vitals: VitalReading[];
+  reports: MedicalReport[];
+
+  addVital: (input: Parameters<typeof vitalService.add>[0]) => Promise<void>;
+  removeVital: (id: string) => Promise<void>;
+  addReport: (input: Parameters<typeof reportService.add>[0]) => Promise<void>;
+  removeReport: (id: string) => Promise<void>;
 
   bootstrap: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -73,6 +84,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   followUps: [],
   familyMembers: [],
   familyFeed: [],
+  vitals: [],
+  reports: [],
   fontSize: (localStorage.getItem('cmm.fontSize') as 'normal' | 'large' | 'xlarge') || 'normal',
   voicePrefs: voiceService.getPrefs(),
 
@@ -93,13 +106,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   refresh: async () => {
-    const [user, meds, inv, fu, fm, ff] = await Promise.all([
+    const [user, meds, inv, fu, fm, ff, vt, rp] = await Promise.all([
       userService.getCurrent(),
       medicationService.list(),
       inventoryService.list(),
       followUpService.list(),
       familyService.listMembers(),
       familyService.listFeed(),
+      vitalService.list(),
+      reportService.list(),
     ]);
     const from = new Date(Date.now() - 30 * 24 * 3600 * 1000);
     const to = new Date(Date.now() + 30 * 24 * 3600 * 1000);
@@ -113,8 +128,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       followUps: fu,
       familyMembers: fm,
       familyFeed: ff,
+      vitals: vt,
+      reports: rp,
     });
   },
+
+  addVital: async (input) => { await vitalService.add(input); await get().refresh(); },
+  removeVital: async (id) => { await vitalService.remove(id); await get().refresh(); },
+  addReport: async (input) => { await reportService.add(input); await get().refresh(); },
+  removeReport: async (id) => { await reportService.remove(id); await get().refresh(); },
 
   takeDose: async (eventId) => {
     const evt = get().events.find((e) => e.id === eventId);

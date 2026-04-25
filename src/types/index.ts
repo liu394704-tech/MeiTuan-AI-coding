@@ -126,6 +126,42 @@ export interface FamilyFeedItem {
   createdAt: string;
 }
 
+/* ===== 生理检测数据 / 健康报告 ===== */
+
+export type VitalKind =
+  | 'blood_pressure'   // 血压 (sys/dia mmHg)
+  | 'blood_glucose'    // 血糖 mmol/L
+  | 'heart_rate'       // 心率 bpm
+  | 'weight'           // 体重 kg
+  | 'steps'            // 步数 步
+  | 'sleep_hours';     // 睡眠时长 小时
+
+export interface VitalReading {
+  id: string;
+  kind: VitalKind;
+  /** 主值。血压时为收缩压 sys */
+  value: number;
+  /** 副值。仅血压时为舒张压 dia */
+  value2?: number;
+  unit: string;
+  /** 测量上下文：空腹 / 餐后2小时 / 运动后 ... 仅部分项需要 */
+  context?: string;
+  measuredAt: string; // ISO
+  source: 'manual' | 'device' | 'report';
+  note?: string;
+}
+
+export interface MedicalReport {
+  id: string;
+  title: string;
+  hospital?: string;
+  reportDate: string; // YYYY-MM-DD
+  /** 简单的指标键值对。键如 LDL / HbA1c / eGFR / 血压均值 */
+  highlights: Array<{ label: string; value: string; level?: 'normal' | 'high' | 'low' }>;
+  conclusion?: string;
+  uploadedAt: string;
+}
+
 export type InsightType = 'adherence' | 'stock' | 'risk' | 'tip';
 export type InsightLevel = 'info' | 'warn' | 'danger';
 

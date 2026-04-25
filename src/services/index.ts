@@ -12,6 +12,8 @@ import type {
   FamilyMember,
   FamilyFeedItem,
   FamilyEventType,
+  VitalReading,
+  MedicalReport,
 } from '@/types';
 
 // Simulate async latency for nicer UX (await tokens)
@@ -259,6 +261,56 @@ export const familyService = {
   async clearFeed(): Promise<void> {
     db.write((d) => {
       d.familyFeed = [];
+    });
+    return delay(undefined);
+  },
+};
+
+export const vitalService = {
+  async list(): Promise<VitalReading[]> {
+    return delay(
+      [...db.read().vitals].sort((a, b) => a.measuredAt.localeCompare(b.measuredAt))
+    );
+  },
+  async add(input: Omit<VitalReading, 'id'>): Promise<VitalReading> {
+    let res!: VitalReading;
+    db.write((d) => {
+      const v: VitalReading = { id: uid('v'), ...input };
+      d.vitals.push(v);
+      res = v;
+    });
+    return delay(res);
+  },
+  async remove(id: string): Promise<void> {
+    db.write((d) => {
+      d.vitals = d.vitals.filter((x) => x.id !== id);
+    });
+    return delay(undefined);
+  },
+};
+
+export const reportService = {
+  async list(): Promise<MedicalReport[]> {
+    return delay(
+      [...db.read().reports].sort((a, b) => b.reportDate.localeCompare(a.reportDate))
+    );
+  },
+  async add(input: Omit<MedicalReport, 'id' | 'uploadedAt'>): Promise<MedicalReport> {
+    let res!: MedicalReport;
+    db.write((d) => {
+      const r: MedicalReport = {
+        id: uid('rep'),
+        uploadedAt: dayjs().toISOString(),
+        ...input,
+      };
+      d.reports.push(r);
+      res = r;
+    });
+    return delay(res);
+  },
+  async remove(id: string): Promise<void> {
+    db.write((d) => {
+      d.reports = d.reports.filter((x) => x.id !== id);
     });
     return delay(undefined);
   },

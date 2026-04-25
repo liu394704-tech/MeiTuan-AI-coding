@@ -13,6 +13,7 @@ import { useAppStore } from '@/store';
 import { dayjs, fmtTime } from '@/utils/date';
 import { buildDosesIcs, downloadFile, shareToFamily } from '@/utils/share';
 import { pickSloganOfTheDay, HEALTH_ARTICLES } from '@/data/articles';
+import { computeHealthScore, generateRecommendations } from '@/utils/healthScore';
 
 export function Dashboard() {
   const user = useAppStore((s) => s.user);
@@ -24,8 +25,13 @@ export function Dashboard() {
   const events = useAppStore((s) => s.events);
   const meds = useAppStore((s) => s.medications);
   const familyFeed = useAppStore((s) => s.familyFeed);
+  const vitals = useAppStore((s) => s.vitals);
+  const reports = useAppStore((s) => s.reports);
   const takeDose = useAppStore((s) => s.takeDose);
   const [tip, setTip] = useState<string | null>(null);
+
+  const health = computeHealthScore({ user, events, vitals, reports });
+  const topRec = generateRecommendations(health, user?.conditions ?? [])[0];
 
   const taken = doses.filter((d) => d.effectiveStatus === 'taken').length;
   const total = doses.length;
@@ -274,40 +280,55 @@ export function Dashboard() {
         )}
       </Card>
 
-      {/* 6. 关键提示 (insight 中的 warn 折叠次屏) */}
-      {insights.filter((i) => i.level !== 'danger').length > 0 && (
-        <Card
-          title="AI 健康助手"
-          action={
-            <Link to="/insights" className="text-sm text-brand-700 font-semibold">
-              更多建议 →
-            </Link>
-          }
-        >
-          <div className="space-y-3">
-            {insights
-              .filter((i) => i.level !== 'danger')
-              .slice(0, 2)
-              .map((i) => (
-                <div
-                  key={i.id}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-brand-50/50 border border-brand-100"
-                >
-                  <div className="text-xl shrink-0">
-                    {i.type === 'adherence' ? '📈' : i.type === 'stock' ? '📦' : i.type === 'risk' ? '⚠️' : '💡'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-semibold">{i.title}</h4>
-                      {i.level === 'warn' && <Tag variant="warn">注意</Tag>}
-                    </div>
-                    <p className="text-sm text-ink-700 mt-0.5">{i.body}</p>
-                  </div>
-                </div>
-              ))}
+      {/* 6. 综合健康评分预览 */}
+      <Card
+        title="AI 健康助手"
+        action={
+          <Link to="/insights" className="text-sm text-brand-700 font-semibold">
+            打开综合分析 →
+          </Link>
+        }
+      >
+        <div className="flex items-center gap-5 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-16 h-16 rounded-full flex items-center justify-center text-white font-extrabold text-xl ${
+                health.verdict === 'good'
+                  ? 'bg-success'
+                  : health.verdict === 'fair'
+                  ? 'bg-warning'
+                  : 'bg-danger'
+              }`}
+            >
+              {health.overall}
+            </div>
+            <div>
+              <div className="text-sm text-ink-500">综合健康分</div>
+              <div className="font-semibold text-ink-900">
+                {health.verdict === 'good' ? '状态良好' : health.verdict === 'fair' ? '需要关注' : '需要重点干预'}
+              </div>
+            </div>
           </div>
-        </Card>
-      )}
+          <div className="flex-1 min-w-[200px] grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {health.subs.map((s) => (
+              <div key={s.key} className="text-center px-2 py-2 rounded-lg bg-brand-50/60 border border-brand-100">
+                <div className="text-xs text-ink-500">{s.emoji} {s.label}</div>
+                <div className="text-lg font-bold text-ink-900">{s.score}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {topRec && (
+          <div className="mt-4 p-3 rounded-xl border border-brand-200 bg-brand-50/50">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">{topRec.emoji}</span>
+              <Tag>{topRec.category}</Tag>
+              <span className="font-semibold text-ink-900">{topRec.title}</span>
+            </div>
+            <p className="text-sm text-ink-700 mt-1">{topRec.body}</p>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
