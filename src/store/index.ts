@@ -6,14 +6,18 @@ import type {
   MedicationEvent,
   Regimen,
   User,
+  FamilyMember,
+  FamilyFeedItem,
 } from '@/types';
 import {
   eventService,
+  familyService,
   followUpService,
   inventoryService,
   medicationService,
   userService,
 } from '@/services';
+import { voiceService, type VoicePrefs } from '@/services/voice';
 
 interface AppState {
   ready: boolean;
@@ -23,6 +27,8 @@ interface AppState {
   inventories: Inventory[];
   events: MedicationEvent[];
   followUps: FollowUp[];
+  familyMembers: FamilyMember[];
+  familyFeed: FamilyFeedItem[];
 
   bootstrap: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -43,11 +49,18 @@ interface AppState {
   updateFollowUp: (id: string, patch: Partial<FollowUp>) => Promise<void>;
   removeFollowUp: (id: string) => Promise<void>;
 
+  addFamilyMember: (input: Parameters<typeof familyService.addMember>[0]) => Promise<void>;
+  toggleFamilyNotify: (id: string, notify: boolean) => Promise<void>;
+  removeFamilyMember: (id: string) => Promise<void>;
+  pushFamilyFeed: (input: Parameters<typeof familyService.pushFeed>[0]) => Promise<void>;
+
   updateUser: (patch: Partial<User>) => Promise<void>;
 
-  // UI prefs
   fontSize: 'normal' | 'large' | 'xlarge';
   setFontSize: (s: 'normal' | 'large' | 'xlarge') => void;
+
+  voicePrefs: VoicePrefs;
+  setVoicePrefs: (p: Partial<VoicePrefs>) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -58,12 +71,19 @@ export const useAppStore = create<AppState>((set, get) => ({
   inventories: [],
   events: [],
   followUps: [],
+  familyMembers: [],
+  familyFeed: [],
   fontSize: (localStorage.getItem('cmm.fontSize') as 'normal' | 'large' | 'xlarge') || 'normal',
+  voicePrefs: voiceService.getPrefs(),
 
   setFontSize: (s) => {
     document.documentElement.dataset.size = s;
     localStorage.setItem('cmm.fontSize', s);
     set({ fontSize: s });
+  },
+  setVoicePrefs: (p) => {
+    const next = voiceService.setPrefs(p);
+    set({ voicePrefs: next });
   },
 
   bootstrap: async () => {
@@ -73,13 +93,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   refresh: async () => {
-    const [user, meds, inv, fu] = await Promise.all([
+    const [user, meds, inv, fu, fm, ff] = await Promise.all([
       userService.getCurrent(),
       medicationService.list(),
       inventoryService.list(),
       followUpService.list(),
+      familyService.listMembers(),
+      familyService.listFeed(),
     ]);
-    // events: pull a wide range (last 30d ~ next 30d)
     const from = new Date(Date.now() - 30 * 24 * 3600 * 1000);
     const to = new Date(Date.now() + 30 * 24 * 3600 * 1000);
     const events = await eventService.listRange(from, to);
@@ -90,11 +111,23 @@ export const useAppStore = create<AppState>((set, get) => ({
       inventories: inv,
       events,
       followUps: fu,
+      familyMembers: fm,
+      familyFeed: ff,
     });
   },
 
   takeDose: async (eventId) => {
+    const evt = get().events.find((e) => e.id === eventId);
+    const med = get().medications.find((m) => m.id === evt?.medicationId);
     await eventService.setStatus(eventId, 'taken');
+    if (evt && med) {
+      await familyService.pushFeed({
+        type: 'dose_taken',
+        title: `${get().user?.name ?? '本人'} 已服 ${med.name} ${evt.dosage}${evt.unit}`,
+        byMemberId: 'fm_self',
+        relatedMedId: med.id,
+      });
+    }
     await get().refresh();
   },
   skipDose: async (eventId) => {
@@ -118,6 +151,15 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   restock: async (medId, amount) => {
     await inventoryService.restock(medId, amount);
+    const med = get().medications.find((m) => m.id === medId);
+    if (med) {
+      await familyService.pushFeed({
+        type: 'restock',
+        title: `已补药：${med.name} +${amount}`,
+        byMemberId: 'fm_self',
+        relatedMedId: medId,
+      });
+    }
     await get().refresh();
   },
   setThreshold: async (medId, days) => {
@@ -135,6 +177,23 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   removeFollowUp: async (id) => {
     await followUpService.remove(id);
+    await get().refresh();
+  },
+
+  addFamilyMember: async (input) => {
+    await familyService.addMember(input);
+    await get().refresh();
+  },
+  toggleFamilyNotify: async (id, notify) => {
+    await familyService.toggleNotify(id, notify);
+    await get().refresh();
+  },
+  removeFamilyMember: async (id) => {
+    await familyService.removeMember(id);
+    await get().refresh();
+  },
+  pushFamilyFeed: async (input) => {
+    await familyService.pushFeed(input);
     await get().refresh();
   },
 

@@ -6,6 +6,7 @@ import { Tag } from '@/components/ui/Tag';
 import { useAppStore } from '@/store';
 import type { ConditionCode } from '@/types';
 import { adminService } from '@/services';
+import { voiceService } from '@/services/voice';
 
 const CONDITION_LABELS: Record<ConditionCode, string> = {
   hypertension: '高血压',
@@ -22,6 +23,8 @@ export function Profile() {
   const refresh = useAppStore((s) => s.refresh);
   const fontSize = useAppStore((s) => s.fontSize);
   const setFontSize = useAppStore((s) => s.setFontSize);
+  const voicePrefs = useAppStore((s) => s.voicePrefs);
+  const setVoicePrefs = useAppStore((s) => s.setVoicePrefs);
 
   const [name, setName] = useState(user?.name ?? '');
   const [age, setAge] = useState(user?.age ?? 0);
@@ -114,6 +117,63 @@ export function Profile() {
             ))}
           </div>
         </Field>
+      </Card>
+
+      <Card title="语音播报">
+        <p className="text-ink-500 mb-4">
+          应用内"播报"按钮使用浏览器自带语音引擎，可连接蓝牙音箱朗读重要提醒。
+        </p>
+        <Field label="开关">
+          <div className="flex gap-2">
+            {[
+              { v: true, label: '🔊 开启' },
+              { v: false, label: '🔇 关闭' },
+            ].map((o) => (
+              <button
+                key={String(o.v)}
+                onClick={() => setVoicePrefs({ enabled: o.v })}
+                className={`flex-1 px-4 py-3 rounded-xl border font-medium transition-colors ${
+                  voicePrefs.enabled === o.v
+                    ? 'bg-brand-500 text-ink-900 border-brand-500'
+                    : 'bg-white border-brand-200'
+                }`}
+                style={{ minHeight: 56 }}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </Field>
+        <Field label={`语速：${voicePrefs.rate.toFixed(2)}`}>
+          <input
+            type="range"
+            min={0.6}
+            max={1.4}
+            step={0.05}
+            value={voicePrefs.rate}
+            onChange={(e) => setVoicePrefs({ rate: parseFloat(e.target.value) })}
+            className="w-full accent-brand-500"
+          />
+        </Field>
+        <Field label={`音量：${Math.round(voicePrefs.volume * 100)}%`}>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={voicePrefs.volume}
+            onChange={(e) => setVoicePrefs({ volume: parseFloat(e.target.value) })}
+            className="w-full accent-brand-500"
+          />
+        </Field>
+        <Button
+          size="lg"
+          onClick={() =>
+            voiceService.speak('这是一段语音测试。按时吃药，身体健康。', { force: true })
+          }
+        >
+          🔊 试听
+        </Button>
       </Card>
 
       <Card title="演示数据">

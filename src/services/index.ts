@@ -9,6 +9,9 @@ import type {
   MedicationEvent,
   Regimen,
   User,
+  FamilyMember,
+  FamilyFeedItem,
+  FamilyEventType,
 } from '@/types';
 
 // Simulate async latency for nicer UX (await tokens)
@@ -194,6 +197,68 @@ export const followUpService = {
   async remove(id: string): Promise<void> {
     db.write((d) => {
       d.followUps = d.followUps.filter((f) => f.id !== id);
+    });
+    return delay(undefined);
+  },
+};
+
+export const familyService = {
+  async listMembers(): Promise<FamilyMember[]> {
+    return delay(db.read().familyMembers);
+  },
+  async addMember(input: Omit<FamilyMember, 'id' | 'joinedAt'>): Promise<FamilyMember> {
+    let res!: FamilyMember;
+    db.write((d) => {
+      const m: FamilyMember = {
+        id: uid('fm'),
+        joinedAt: dayjs().toISOString(),
+        ...input,
+      };
+      d.familyMembers.push(m);
+      res = m;
+    });
+    return delay(res);
+  },
+  async toggleNotify(id: string, notify: boolean): Promise<void> {
+    db.write((d) => {
+      d.familyMembers = d.familyMembers.map((m) => (m.id === id ? { ...m, notify } : m));
+    });
+    return delay(undefined);
+  },
+  async removeMember(id: string): Promise<void> {
+    db.write((d) => {
+      d.familyMembers = d.familyMembers.filter((m) => m.id !== id);
+    });
+    return delay(undefined);
+  },
+  async listFeed(): Promise<FamilyFeedItem[]> {
+    return delay(
+      [...db.read().familyFeed].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    );
+  },
+  async pushFeed(input: {
+    type: FamilyEventType;
+    title: string;
+    body?: string;
+    byMemberId?: string;
+    relatedMedId?: string;
+  }): Promise<FamilyFeedItem> {
+    let res!: FamilyFeedItem;
+    db.write((d) => {
+      const item: FamilyFeedItem = {
+        id: uid('ff'),
+        createdAt: dayjs().toISOString(),
+        ...input,
+      };
+      d.familyFeed.unshift(item);
+      d.familyFeed = d.familyFeed.slice(0, 100); // cap
+      res = item;
+    });
+    return delay(res);
+  },
+  async clearFeed(): Promise<void> {
+    db.write((d) => {
+      d.familyFeed = [];
     });
     return delay(undefined);
   },

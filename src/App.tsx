@@ -10,6 +10,8 @@ import { Inventory } from '@/pages/Inventory';
 import { FollowUp } from '@/pages/FollowUp';
 import { Insights } from '@/pages/Insights';
 import { Profile } from '@/pages/Profile';
+import { Family } from '@/pages/Family';
+import { Articles } from '@/pages/Articles';
 import { useAppStore } from '@/store';
 
 export default function App() {
@@ -39,6 +41,8 @@ export default function App() {
           <Route path="/medications/:id" element={<MedicationDetail />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/follow-up" element={<FollowUp />} />
+          <Route path="/family" element={<Family />} />
+          <Route path="/articles" element={<Articles />} />
           <Route path="/insights" element={<Insights />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<Navigate to="/" replace />} />

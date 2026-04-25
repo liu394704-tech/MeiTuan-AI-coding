@@ -6,6 +6,7 @@ import { Field, TextInput, Select } from '@/components/ui/Input';
 import { Tag } from '@/components/ui/Tag';
 import { useAppStore } from '@/store';
 import { dayjs } from '@/utils/date';
+import { buildFollowUpIcs, downloadFile } from '@/utils/share';
 
 export function FollowUp() {
   const followUps = useAppStore((s) => s.followUps);
@@ -74,13 +75,25 @@ export function FollowUp() {
                     )}
                   </div>
                 </div>
-                <div className="flex gap-2 mt-4">
+                <div className="flex gap-2 mt-4 flex-wrap">
                   <Button
                     variant="secondary"
                     size="lg"
                     onClick={() => updateFollowUp(f.id, { status: 'done' })}
                   >
                     标记已完成
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    onClick={() =>
+                      downloadFile(
+                        `followup-${f.scheduledDate}.ics`,
+                        buildFollowUpIcs(f)
+                      )
+                    }
+                  >
+                    📅 加入日历
                   </Button>
                   <Button
                     variant="ghost"

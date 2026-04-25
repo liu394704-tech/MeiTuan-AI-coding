@@ -5,6 +5,8 @@ import type {
   Inventory,
   FollowUp,
   MedicationEvent,
+  FamilyMember,
+  FamilyFeedItem,
 } from '@/types';
 import { dayjs } from '@/utils/date';
 import { generateScheduledEvents } from '@/utils/eventGenerator';
@@ -17,6 +19,8 @@ export interface DbShape {
   inventories: Inventory[];
   events: MedicationEvent[];
   followUps: FollowUp[];
+  familyMembers: FamilyMember[];
+  familyFeed: FamilyFeedItem[];
 }
 
 export function buildSeed(): DbShape {
@@ -177,6 +181,62 @@ export function buildSeed(): DbShape {
     },
   ];
 
+  const familyMembers: FamilyMember[] = [
+    {
+      id: 'fm_self',
+      name: '张大爷',
+      role: 'patient',
+      relation: '本人',
+      notify: false,
+      avatarColor: '#FFC300',
+      joinedAt: dayjs().subtract(60, 'day').toISOString(),
+    },
+    {
+      id: 'fm_son',
+      name: '小张',
+      role: 'guardian',
+      relation: '儿子',
+      phone: '138****0001',
+      notify: true,
+      avatarColor: '#FF8C00',
+      joinedAt: dayjs().subtract(58, 'day').toISOString(),
+    },
+    {
+      id: 'fm_daughter',
+      name: '张小妹',
+      role: 'guardian',
+      relation: '女儿',
+      phone: '139****0002',
+      notify: true,
+      avatarColor: '#22A06B',
+      joinedAt: dayjs().subtract(50, 'day').toISOString(),
+    },
+  ];
+
+  const familyFeed: FamilyFeedItem[] = [
+    {
+      id: 'ff_1',
+      type: 'cheer',
+      title: '小张：爸记得按时吃药噢，周末回家看你 ❤️',
+      byMemberId: 'fm_son',
+      createdAt: dayjs().subtract(2, 'hour').toISOString(),
+    },
+    {
+      id: 'ff_2',
+      type: 'low_stock',
+      title: '系统提醒：二甲双胍库存不足，预计 3 天后用完',
+      relatedMedId: 'med_metf',
+      createdAt: dayjs().subtract(6, 'hour').toISOString(),
+    },
+    {
+      id: 'ff_3',
+      type: 'dose_taken',
+      title: '张大爷 今早 08:00 已服 氨氯地平片 1 片',
+      byMemberId: 'fm_self',
+      createdAt: dayjs().subtract(20, 'hour').toISOString(),
+    },
+  ];
+
   return {
     users: [user],
     currentUserId: userId,
@@ -185,5 +245,7 @@ export function buildSeed(): DbShape {
     inventories,
     events,
     followUps,
+    familyMembers,
+    familyFeed,
   };
 }

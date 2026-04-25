@@ -1,6 +1,6 @@
 import { buildSeed, type DbShape } from './seed';
 
-const KEY = 'cmm.db.v1';
+const KEY = 'cmm.db.v2';
 
 function load(): DbShape {
   try {

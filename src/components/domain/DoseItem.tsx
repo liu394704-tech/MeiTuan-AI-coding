@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/Button';
 import { Tag } from '@/components/ui/Tag';
 import { fmtTime } from '@/utils/date';
 import { useAppStore } from '@/store';
+import { voiceService } from '@/services/voice';
 import type { TodayDose } from '@/hooks/useTodayDoses';
 
 export function DoseItem({ dose }: { dose: TodayDose }) {
@@ -11,6 +12,13 @@ export function DoseItem({ dose }: { dose: TodayDose }) {
 
   const status = dose.effectiveStatus;
   const isDone = status === 'taken' || status === 'skipped';
+
+  function announce() {
+    voiceService.speak(
+      `${fmtTime(dose.scheduledAt)}，需要服用 ${dose.medicationName}，${dose.dosage} ${dose.unit}。`,
+      { force: true }
+    );
+  }
 
   return (
     <div
@@ -45,11 +53,14 @@ export function DoseItem({ dose }: { dose: TodayDose }) {
         </div>
       </div>
 
-      <div className="flex gap-2 md:gap-3 shrink-0">
+      <div className="flex gap-2 md:gap-3 shrink-0 flex-wrap">
         {!isDone && (
           <>
             <Button size="lg" onClick={() => take(dose.id)} aria-label="标记已服">
               ✓ 已服药
+            </Button>
+            <Button variant="secondary" size="lg" onClick={announce} aria-label="语音播报">
+              🔊
             </Button>
             <Button variant="ghost" size="lg" onClick={() => skip(dose.id)} aria-label="跳过">
               跳过

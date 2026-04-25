@@ -8,10 +8,10 @@
   }
 
   html[data-size='large'] {
-    --font-scale: 1.125; /* 18 / 16 */
+    --font-scale: 1.125;
   }
   html[data-size='xlarge'] {
-    --font-scale: 1.25; /* 20 / 16 */
+    --font-scale: 1.25;
   }
 
   html {
@@ -21,23 +21,33 @@
   }
 
   body {
-    @apply bg-ink-100 text-ink-900;
+    @apply bg-canvas text-ink-900;
     font-family:
       'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', system-ui,
       -apple-system, 'Segoe UI', Roboto, 'Noto Sans CJK SC', sans-serif;
     min-height: 100vh;
+    background-image:
+      radial-gradient(rgba(255, 195, 0, 0.12) 1px, transparent 1px),
+      radial-gradient(rgba(255, 159, 28, 0.08) 1px, transparent 1px);
+    background-size: 22px 22px, 36px 36px;
+    background-position: 0 0, 11px 11px;
   }
 
   button,
   [role='button'] {
-    /* 适老化：所有按钮最小 48px 触控高度 */
     min-height: 48px;
   }
 }
 
 @layer components {
   .card {
-    @apply bg-white rounded-xl2 shadow-soft p-5;
+    @apply bg-white rounded-xl2 shadow-soft p-5 border border-brand-100;
+  }
+
+  .card-yellow {
+    @apply rounded-xl2 shadow-soft p-5 text-ink-900;
+    background: linear-gradient(135deg, #fff8e1 0%, #fff3c4 100%);
+    border: 1px solid #fce588;
   }
 
   .btn {
@@ -49,15 +59,15 @@
   }
 
   .btn-primary {
-    @apply btn bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700;
+    @apply btn bg-brand-500 text-ink-900 hover:bg-brand-600 active:bg-brand-700 shadow-glow;
   }
 
   .btn-secondary {
-    @apply btn bg-white text-brand-600 border border-brand-200 hover:bg-brand-50;
+    @apply btn bg-white text-ink-900 border border-brand-300 hover:bg-brand-50;
   }
 
   .btn-ghost {
-    @apply btn bg-transparent text-ink-700 hover:bg-ink-100;
+    @apply btn bg-transparent text-ink-700 hover:bg-brand-50;
   }
 
   .btn-danger {
@@ -75,7 +85,7 @@
   }
 
   .input {
-    @apply w-full px-4 py-3 rounded-xl border border-ink-300 bg-white
+    @apply w-full px-4 py-3 rounded-xl border border-brand-200 bg-white
            focus:outline-none focus:ring-4 focus:ring-brand-200 focus:border-brand-400;
     min-height: 48px;
   }
@@ -89,18 +99,18 @@
   }
 
   .tag-info {
-    @apply tag bg-brand-50 text-brand-700;
+    @apply tag bg-brand-100 text-brand-800;
   }
 
   .tag-warn {
-    @apply tag bg-amber-50 text-amber-700;
+    @apply tag bg-amber-100 text-amber-800;
   }
 
   .tag-danger {
-    @apply tag bg-red-50 text-red-700;
+    @apply tag bg-red-100 text-red-700;
   }
 
   .tag-success {
-    @apply tag bg-emerald-50 text-emerald-700;
+    @apply tag bg-emerald-100 text-emerald-700;
   }
 }
