@@ -67,3 +67,32 @@ npm run preview
 ## 替换为真后端
 
 `src/services/index.ts` 是唯一的网络/数据出口。替换实现（如 `fetch('/api/...')`）即可，store 与页面无需改动。
+
+## 部署到 GitHub Pages（推荐 / 免费 / 自动）
+
+仓库已经包含 `.github/workflows/deploy.yml`，**任何人 fork 后只需 1 步开启**：
+
+1. 进入仓库 `Settings → Pages → Build and deployment → Source`，选择 **GitHub Actions**
+2. 把改动 push / merge 到 `main` 分支
+3. Actions 会自动 build + 部署到：
+   ```
+   https://<你的GitHub用户名>.github.io/<仓库名>/
+   ```
+
+第一次部署完成后，Actions 页面会给出最终 URL，分享给任何人都可访问。
+
+> Workflow 里通过环境变量 `BASE_PATH=/${repo}/` 自动适配 GitHub Pages 子路径，无需手动改代码。
+
+### 本地预览构建产物
+
+```bash
+BASE_PATH=/MeiTuan-AI-coding/ npm run build
+npm run preview
+```
+
+### 部署到自定义域 / Vercel / Netlify / Cloudflare Pages
+
+- 这些平台默认部署到根目录 `/`，无需设置 `BASE_PATH`
+- 构建命令：`npm run build`
+- 发布目录：`dist`
+- SPA 路由：把所有 404 fallback 到 `index.html`（Vercel/Netlify 默认就是这样，Cloudflare Pages 需要在仪表盘里开 SPA 模式）
