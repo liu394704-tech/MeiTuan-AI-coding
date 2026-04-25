@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-scale: 1;
+  }
+
+  html[data-size='large'] {
+    --font-scale: 1.125;
+  }
+  html[data-size='xlarge'] {
+    --font-scale: 1.25;
+  }
+
+  html {
+    font-size: calc(16px * var(--font-scale));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply text-ink-900;
+    font-family:
+      'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', system-ui,
+      -apple-system, 'Segoe UI', Roboto, 'Noto Sans CJK SC', sans-serif;
+    min-height: 100vh;
+    background: #FFFDF6;
+  }
+
+  button,
+  [role='button'] {
+    min-height: 48px;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-xl2 shadow-soft p-5 border border-brand-100;
+  }
+
+  .card-yellow {
+    @apply rounded-xl2 shadow-soft p-5 text-ink-900;
+    background: linear-gradient(135deg, #fff8e1 0%, #fff3c4 100%);
+    border: 1px solid #fce588;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl
+           font-semibold transition-colors select-none
+           focus:outline-none focus:ring-4 focus:ring-brand-200
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    min-height: 48px;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-500 text-ink-900 hover:bg-brand-600 active:bg-brand-700 shadow-glow;
+  }
+
+  .btn-secondary {
+    @apply btn bg-white text-ink-900 border border-brand-300 hover:bg-brand-50;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-ink-700 hover:bg-brand-50;
+  }
+
+  .btn-danger {
+    @apply btn bg-danger text-white hover:opacity-90;
+  }
+
+  .btn-lg {
+    @apply px-6 py-4 text-lg;
+    min-height: 56px;
+  }
+
+  .btn-xl {
+    @apply px-8 py-5 text-xl;
+    min-height: 64px;
+  }
+
+  .input {
+    @apply w-full px-4 py-3 rounded-xl border border-brand-200 bg-white
+           focus:outline-none focus:ring-4 focus:ring-brand-200 focus:border-brand-400;
+    min-height: 48px;
+  }
+
+  .label {
+    @apply block text-ink-700 font-medium mb-2;
+  }
+
+  .tag {
+    @apply inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium;
+  }
+
+  .tag-info {
+    @apply tag bg-brand-100 text-brand-800;
+  }
+
+  .tag-warn {
+    @apply tag bg-amber-100 text-amber-800;
+  }
+
+  .tag-danger {
+    @apply tag bg-red-100 text-red-700;
+  }
+
+  .tag-success {
+    @apply tag bg-emerald-100 text-emerald-700;
+  }
+}

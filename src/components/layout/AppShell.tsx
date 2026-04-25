@@ -1,0 +1,138 @@
+import { type ReactNode } from 'react';
+import { NavLink } from 'react-router-dom';
+import { useAppStore } from '@/store';
+import { useAdherence } from '@/hooks/useAdherence';
+
+const NAV = [
+  { to: '/', label: '首页', icon: '🏠' },
+  { to: '/reminders', label: '提醒中心', icon: '⏰' },
+  { to: '/medications', label: '我的药品', icon: '💊' },
+  { to: '/insights', label: 'AI 助手', icon: '🤖' },
+  { to: '/family', label: '家庭群', icon: '👪' },
+  { to: '/articles', label: '健康推文', icon: '📰' },
+  { to: '/profile', label: '我', icon: '👤' },
+];
+
+// 移动端 5 个 tab：首页 / 提醒 / 药品 / AI / 我
+const MOBILE_NAV = [NAV[0], NAV[1], NAV[2], NAV[3], NAV[6]];
+
+export function AppShell({ children }: { children: ReactNode }) {
+  const fontSize = useAppStore((s) => s.fontSize);
+  const setFontSize = useAppStore((s) => s.setFontSize);
+  const voicePrefs = useAppStore((s) => s.voicePrefs);
+  const setVoicePrefs = useAppStore((s) => s.setVoicePrefs);
+  const ad = useAdherence(7);
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <header className="sticky top-0 z-40 bg-hero-yellow border-b border-brand-300 shadow-soft">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white text-brand-700 flex items-center justify-center font-bold shadow-soft">
+              药
+            </div>
+            <div>
+              <h1 className="text-base md:text-lg font-bold text-ink-900 leading-none">
+                慢病用药小管家
+              </h1>
+              <p className="text-xs text-ink-700/80 mt-0.5 hidden md:block">
+                让每一次服药都更有把握
+              </p>
+            </div>
+          </div>
+
+          <div className="hidden md:flex items-center gap-4 flex-1 max-w-md">
+            <div className="flex-1">
+              <div className="flex justify-between text-xs text-ink-700 mb-1">
+                <span>本周依从性</span>
+                <span className="font-semibold">{ad.score} 分</span>
+              </div>
+              <div className="h-2 rounded-full bg-white/50 overflow-hidden">
+                <div
+                  className={`h-full transition-all ${
+                    ad.score >= 85 ? 'bg-success' : ad.score >= 60 ? 'bg-warning' : 'bg-danger'
+                  }`}
+                  style={{ width: `${ad.score}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setVoicePrefs({ enabled: !voicePrefs.enabled })}
+              className={`px-3 rounded-lg font-medium text-sm transition-colors ${
+                voicePrefs.enabled
+                  ? 'bg-white text-brand-800 shadow-sm'
+                  : 'bg-white/40 text-ink-700'
+              }`}
+              style={{ minHeight: 40 }}
+              title={voicePrefs.enabled ? '语音已开' : '语音已关'}
+            >
+              {voicePrefs.enabled ? '🔊 语音' : '🔇 静音'}
+            </button>
+            <div className="hidden sm:flex bg-white/60 rounded-lg p-1 border border-white/70">
+              {(['normal', 'large', 'xlarge'] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setFontSize(s)}
+                  className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                    fontSize === s ? 'bg-white shadow-sm text-brand-800' : 'text-ink-700'
+                  }`}
+                  style={{ minHeight: 32 }}
+                >
+                  {s === 'normal' ? 'A' : s === 'large' ? 'A+' : 'A++'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex-1 flex max-w-7xl w-full mx-auto">
+        <aside className="hidden md:flex w-56 flex-col gap-1 px-4 py-6 sticky top-16 self-start">
+          {NAV.map((n) => (
+            <NavLink
+              key={n.to}
+              to={n.to}
+              end={n.to === '/'}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+                  isActive
+                    ? 'bg-brand-100 text-brand-800 shadow-soft'
+                    : 'text-ink-700 hover:bg-brand-50'
+                }`
+              }
+            >
+              <span className="text-lg">{n.icon}</span>
+              <span>{n.label}</span>
+            </NavLink>
+          ))}
+        </aside>
+
+        <main className="flex-1 px-4 md:px-8 py-6 pb-24 md:pb-10 min-w-0">{children}</main>
+      </div>
+
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-brand-100">
+        <div className="grid grid-cols-5">
+          {MOBILE_NAV.map((n) => (
+            <NavLink
+              key={n.to}
+              to={n.to}
+              end={n.to === '/'}
+              className={({ isActive }) =>
+                `flex flex-col items-center justify-center gap-0.5 py-2 ${
+                  isActive ? 'text-brand-700' : 'text-ink-500'
+                }`
+              }
+              style={{ minHeight: 56 }}
+            >
+              <span className="text-xl">{n.icon}</span>
+              <span className="text-xs font-medium">{n.label}</span>
+            </NavLink>
+          ))}
+        </div>
+      </nav>
+    </div>
+  );
+}
