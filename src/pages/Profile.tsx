@@ -121,7 +121,7 @@ export function Profile() {
 
       <Card title="语音播报">
         <p className="text-ink-500 mb-4">
-          应用内"播报"按钮使用浏览器自带语音引擎，可连接蓝牙音箱朗读重要提醒。
+          可调多种音色与语速，让"播报"按钮的声音更自然。连接蓝牙音箱即可外放。
         </p>
         <Field label="开关">
           <div className="flex gap-2">
@@ -144,14 +144,55 @@ export function Profile() {
             ))}
           </div>
         </Field>
-        <Field label={`语速：${voicePrefs.rate.toFixed(2)}`}>
+
+        <Field label="音色">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {voiceService.getTones().map((t) => {
+              const active = voicePrefs.tone === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setVoicePrefs({ tone: t.id })}
+                  className={`text-left p-3 rounded-xl border transition-colors ${
+                    active ? 'border-brand-500 bg-brand-50' : 'border-brand-200 bg-white hover:bg-brand-50'
+                  }`}
+                  style={{ minHeight: 64 }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{t.emoji}</span>
+                    <span className="font-semibold">{t.name}</span>
+                  </div>
+                  <div className="text-xs text-ink-500 mt-1">{t.desc}</div>
+                </button>
+              );
+            })}
+          </div>
+        </Field>
+
+        {voicePrefs.tone === 'custom' && (
+          <Field label="选择系统语音">
+            <Select
+              value={voicePrefs.customVoiceURI ?? ''}
+              onChange={(e) => setVoicePrefs({ customVoiceURI: e.target.value || undefined })}
+            >
+              <option value="">默认</option>
+              {voiceService.listVoices().map((v) => (
+                <option key={v.voiceURI} value={v.voiceURI}>
+                  {v.name} ({v.lang})
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
+
+        <Field label={`语速微调：${voicePrefs.rateAdjust > 0 ? '+' : ''}${voicePrefs.rateAdjust.toFixed(2)}`}>
           <input
             type="range"
-            min={0.6}
-            max={1.4}
+            min={-0.3}
+            max={0.3}
             step={0.05}
-            value={voicePrefs.rate}
-            onChange={(e) => setVoicePrefs({ rate: parseFloat(e.target.value) })}
+            value={voicePrefs.rateAdjust}
+            onChange={(e) => setVoicePrefs({ rateAdjust: parseFloat(e.target.value) })}
             className="w-full accent-brand-500"
           />
         </Field>
@@ -166,14 +207,27 @@ export function Profile() {
             className="w-full accent-brand-500"
           />
         </Field>
-        <Button
-          size="lg"
-          onClick={() =>
-            voiceService.speak('这是一段语音测试。按时吃药，身体健康。', { force: true })
-          }
-        >
-          🔊 试听
-        </Button>
+
+        <div className="flex flex-wrap gap-2">
+          <Button size="lg" onClick={() => voiceService.speak('这是一段语音测试。按时吃药，身体健康。', { force: true })}>
+            🔊 试听当前音色
+          </Button>
+          {voiceService.getTones().filter((t) => t.id !== 'custom').map((t) => (
+            <Button
+              key={t.id}
+              variant="secondary"
+              size="md"
+              onClick={() =>
+                voiceService.speak(`大家好，我是${t.name}。按时吃药，身体健康。`, {
+                  force: true,
+                  toneOverride: t.id,
+                })
+              }
+            >
+              {t.emoji} 试听 {t.name}
+            </Button>
+          ))}
+        </div>
       </Card>
 
       <Card title="演示数据">

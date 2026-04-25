@@ -1,31 +1,31 @@
-import { useState } from 'react';
-import { Card } from '@/components/ui/Card';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Field, Select, TextInput } from '@/components/ui/Input';
-import { Tag } from '@/components/ui/Tag';
 import { SpeakButton } from '@/components/domain/SpeakButton';
 import { useAppStore } from '@/store';
 import type { FamilyEventType, FamilyRole } from '@/types';
-import { dayjs } from '@/utils/date';
+import { dayjs, fmtTime } from '@/utils/date';
 import { shareToFamily } from '@/utils/share';
 import { useStockForecasts } from '@/hooks/useStockForecasts';
 
 const ROLE_LABEL: Record<FamilyRole, string> = {
   patient: '本人',
-  guardian: '监护人',
+  guardian: '监护',
   doctor: '医生',
   other: '其他',
 };
 
-const FEED_ICON: Record<FamilyEventType, string> = {
-  dose_taken: '✅',
-  dose_missed: '❗',
-  low_stock: '📦',
-  restock: '🛒',
-  follow_up: '🩺',
-  cheer: '❤️',
-};
+const SYSTEM_TYPES = new Set<FamilyEventType>(['dose_taken', 'low_stock', 'restock', 'follow_up']);
+
+const QUICK_REPLIES = [
+  '收到 👌',
+  '记得按时吃药噢',
+  '今天感觉怎么样？',
+  '别忘了量血压',
+  '周末回家看您 ❤️',
+  '👍',
+];
 
 export function Family() {
   const family = useAppStore((s) => s.familyMembers);
@@ -37,168 +37,264 @@ export function Family() {
   const user = useAppStore((s) => s.user);
   const stocks = useStockForecasts();
 
+  const me = family.find((m) => m.role === 'patient') ?? family[0];
+  const others = family.filter((m) => m.id !== me?.id);
+
+  // 当前"以谁的身份发送"，方便演示家人发消息（默认女儿）
+  const [asMemberId, setAsMemberId] = useState(others[0]?.id ?? me?.id ?? 'fm_self');
+  useEffect(() => {
+    if (!asMemberId && others[0]) setAsMemberId(others[0].id);
+  }, [asMemberId, others]);
+
+  const [text, setText] = useState('');
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [relation, setRelation] = useState('儿子');
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<FamilyRole>('guardian');
 
-  const [cheerOpen, setCheerOpen] = useState(false);
-  const [cheerText, setCheerText] = useState('记得按时吃药噢！我们都很爱您 ❤️');
+  // chat list (ascending time)
+  const messages = useMemo(
+    () => [...feed].sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    [feed]
+  );
 
-  const [shareTip, setShareTip] = useState<string | null>(null);
+  // auto scroll
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages.length]);
 
   const lowStocks = stocks.filter((x) => x.isLow);
   const summaryText =
-    `${user?.name ?? '本人'} 的健康简报：` +
-    `本周用药基本规律。` +
+    `${user?.name ?? '本人'} 的健康简报：本周用药基本规律。` +
     (lowStocks.length > 0
-      ? `以下药品库存不足，请尽快补药：${lowStocks
-          .map((s) => `${s.name}（仅够 ${s.daysLeft} 天）`)
-          .join('、')}。`
+      ? `以下药品库存不足：${lowStocks.map((s) => `${s.name}（仅够 ${s.daysLeft} 天）`).join('、')}。`
       : `所有药品库存充足。`);
 
+  function send() {
+    const msg = text.trim();
+    if (!msg) return;
+    pushFeed({
+      type: 'cheer',
+      title: msg,
+      byMemberId: asMemberId,
+    });
+    setText('');
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Toolbar */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl md:text-2xl font-bold">家庭健康群</h2>
-          <p className="text-ink-500 mt-1">让全家人一起守护爸妈的健康</p>
+          <p className="text-ink-500 mt-1">让全家人一起守护爸妈</p>
         </div>
         <div className="flex gap-2">
-          <SpeakButton text={summaryText} label="向音箱播报简报" />
+          <SpeakButton text={summaryText} label="🔊 播报简报" />
           <Button
             size="lg"
             onClick={async () => {
-              const r = await shareToFamily({
-                title: '家庭健康简报',
-                text: summaryText,
-              });
-              setShareTip(
+              const r = await shareToFamily({ title: '家庭健康简报', text: summaryText });
+              alert(
                 r === 'shared' ? '已通过系统分享' : r === 'copied' ? '简报已复制，可粘贴到家庭群' : '分享失败'
               );
-              setTimeout(() => setShareTip(null), 2200);
             }}
           >
-            🔗 分享到家庭群
+            🔗 分享到群
           </Button>
         </div>
       </div>
 
-      {shareTip && (
-        <div className="card-yellow text-center font-medium">{shareTip}</div>
-      )}
-
-      {/* Members */}
-      <Card
-        title="家庭成员"
-        action={
-          <Button size="lg" onClick={() => setOpen(true)}>
-            + 邀请家人
-          </Button>
-        }
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {family.map((m) => (
-            <div
-              key={m.id}
-              className="flex items-center gap-4 p-4 rounded-xl bg-brand-50/60 border border-brand-100"
-            >
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0"
-                style={{ background: m.avatarColor ?? '#FFC300' }}
+      {/* Chat layout */}
+      <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-4">
+        {/* Sidebar: members */}
+        <aside className="card !p-0 overflow-hidden">
+          <div className="px-4 py-3 border-b border-brand-100 bg-brand-50/60">
+            <div className="text-sm text-ink-500">家庭群成员</div>
+            <div className="font-semibold">共 {family.length} 人</div>
+          </div>
+          <ul className="divide-y divide-brand-100 max-h-[60vh] md:max-h-[70vh] overflow-auto">
+            {family.map((m) => (
+              <li key={m.id} className="flex items-center gap-3 px-4 py-3">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0"
+                  style={{ background: m.avatarColor ?? '#FFC300' }}
+                >
+                  {m.name.slice(-1)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium truncate">{m.name}</span>
+                    {m.role === 'patient' && (
+                      <span className="text-xs text-brand-700 bg-brand-100 px-1.5 py-0.5 rounded">本人</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-ink-500">
+                    {ROLE_LABEL[m.role]}{m.relation ? ` · ${m.relation}` : ''}
+                  </div>
+                </div>
+                {m.role !== 'patient' && (
+                  <input
+                    type="checkbox"
+                    title="接收提醒"
+                    className="w-5 h-5 accent-brand-500 cursor-pointer"
+                    checked={m.notify}
+                    onChange={(e) => toggleNotify(m.id, e.target.checked)}
+                  />
+                )}
+              </li>
+            ))}
+          </ul>
+          <div className="p-3 border-t border-brand-100 flex flex-col gap-2">
+            <Button variant="secondary" onClick={() => setOpen(true)}>+ 邀请家人</Button>
+            {others.length > 1 && (
+              <button
+                onClick={() => {
+                  if (confirm('移除最后一位家庭成员？')) removeMember(others[others.length - 1].id);
+                }}
+                className="text-xs text-ink-500 hover:text-danger"
+                style={{ minHeight: 32 }}
               >
-                {m.name.slice(-1)}
+                移除最后一位成员
+              </button>
+            )}
+          </div>
+        </aside>
+
+        {/* Chat panel */}
+        <section
+          className="rounded-xl2 shadow-soft border border-brand-100 overflow-hidden flex flex-col"
+          style={{
+            background:
+              "linear-gradient(180deg, #F2EEE5 0%, #ECE7DA 100%)",
+            minHeight: '60vh',
+          }}
+        >
+          {/* Chat header */}
+          <div className="px-4 py-3 bg-white/85 backdrop-blur border-b border-brand-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-brand-500 text-ink-900 font-bold flex items-center justify-center">家</div>
+              <div>
+                <div className="font-semibold">家庭健康群（{family.length}）</div>
+                <div className="text-xs text-ink-500">最近活跃 {dayjs(messages[messages.length - 1]?.createdAt ?? new Date()).format('MM-DD HH:mm')}</div>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold">{m.name}</span>
-                  <Tag>{ROLE_LABEL[m.role]}</Tag>
-                  {m.relation && <span className="text-sm text-ink-500">· {m.relation}</span>}
-                </div>
-                {m.phone && <div className="text-sm text-ink-500 mt-0.5">{m.phone}</div>}
-              </div>
-              {m.role !== 'patient' && (
-                <div className="flex items-center gap-2">
-                  <label className="flex items-center gap-1 text-sm text-ink-700 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="w-5 h-5 accent-brand-500"
-                      checked={m.notify}
-                      onChange={(e) => toggleNotify(m.id, e.target.checked)}
-                    />
-                    接收提醒
-                  </label>
-                  <Button
-                    variant="ghost"
-                    size="md"
-                    onClick={() => {
-                      if (confirm(`移除家庭成员"${m.name}"？`)) removeMember(m.id);
-                    }}
-                  >
-                    移除
-                  </Button>
-                </div>
-              )}
             </div>
-          ))}
-        </div>
-      </Card>
+            <div className="text-xs text-ink-500 hidden md:block">演示数据，本地保存</div>
+          </div>
 
-      {/* Cheer / push */}
-      <Card title="发送一句关心">
-        <div className="flex gap-3 flex-wrap">
-          {['记得按时吃药噢！', '今天感觉怎么样？', '周末回家看您 ❤️', '别忘了量血压'].map((t) => (
-            <button
-              key={t}
-              onClick={() => setCheerText(t)}
-              className="px-4 py-2 rounded-xl border border-brand-200 bg-brand-50 hover:bg-brand-100"
-              style={{ minHeight: 44 }}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-        <div className="mt-3">
-          <TextInput value={cheerText} onChange={(e) => setCheerText(e.target.value)} />
-        </div>
-        <div className="flex gap-3 mt-3">
-          <Button
-            size="lg"
-            onClick={() => {
-              setCheerOpen(true);
-            }}
-          >
-            发送到家庭群
-          </Button>
-          <SpeakButton text={cheerText} label="先试听" />
-        </div>
-      </Card>
-
-      {/* Feed */}
-      <Card title="家庭动态">
-        {feed.length === 0 ? (
-          <p className="text-ink-500">暂无动态。</p>
-        ) : (
-          <ul className="divide-y divide-brand-100">
-            {feed.map((f) => {
-              const member = family.find((m) => m.id === f.byMemberId);
-              return (
-                <li key={f.id} className="py-3 flex items-start gap-3">
-                  <div className="text-2xl">{FEED_ICON[f.type]}</div>
-                  <div className="flex-1">
-                    <div className="font-medium text-ink-900">{f.title}</div>
-                    <div className="text-xs text-ink-500 mt-1">
-                      {member ? `${member.name} · ` : ''}
-                      {dayjs(f.createdAt).format('MM-DD HH:mm')}
+          {/* Messages */}
+          <div ref={scrollRef} className="flex-1 overflow-auto p-4 space-y-3">
+            {messages.map((m) => {
+              if (m.type === 'system') {
+                return (
+                  <div key={m.id} className="flex justify-center">
+                    <span className="px-3 py-1 rounded-full bg-black/10 text-xs text-ink-700">
+                      {m.title}
+                    </span>
+                  </div>
+                );
+              }
+              if (SYSTEM_TYPES.has(m.type) && m.type !== 'cheer') {
+                const icon = m.type === 'dose_taken' ? '✅' : m.type === 'low_stock' ? '📦' : m.type === 'restock' ? '🛒' : '🩺';
+                return (
+                  <div key={m.id} className="flex justify-center">
+                    <div className="bg-white/80 border border-brand-100 px-3 py-2 rounded-xl shadow-sm text-sm text-ink-700 max-w-[80%]">
+                      <span className="mr-1.5">{icon}</span>{m.title}
+                      <span className="ml-2 text-xs text-ink-500">{fmtTime(m.createdAt)}</span>
                     </div>
                   </div>
-                </li>
+                );
+              }
+              const member = family.find((x) => x.id === m.byMemberId);
+              const mine = member?.id === me?.id;
+              return (
+                <div key={m.id} className={`flex gap-2 ${mine ? 'justify-end' : 'justify-start'}`}>
+                  {!mine && (
+                    <div
+                      className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0"
+                      style={{ background: member?.avatarColor ?? '#FFC300' }}
+                    >
+                      {(member?.name ?? '？').slice(-1)}
+                    </div>
+                  )}
+                  <div className={`max-w-[75%] ${mine ? 'items-end' : 'items-start'} flex flex-col`}>
+                    {!mine && (
+                      <div className="text-xs text-ink-500 mb-0.5 px-1">
+                        {member?.name ?? '匿名'}
+                      </div>
+                    )}
+                    <div
+                      className={`px-3.5 py-2.5 leading-relaxed shadow-sm ${
+                        mine
+                          ? 'bg-brand-400 text-ink-900 rounded-2xl rounded-tr-sm'
+                          : 'bg-white text-ink-900 rounded-2xl rounded-tl-sm border border-brand-100'
+                      }`}
+                    >
+                      {m.title}
+                    </div>
+                    <div className="text-[10px] text-ink-500 mt-0.5 px-1">{fmtTime(m.createdAt)}</div>
+                  </div>
+                  {mine && (
+                    <div
+                      className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0"
+                      style={{ background: me?.avatarColor ?? '#FFC300' }}
+                    >
+                      {(me?.name ?? '我').slice(-1)}
+                    </div>
+                  )}
+                </div>
               );
             })}
-          </ul>
-        )}
-      </Card>
+            {messages.length === 0 && (
+              <div className="text-center text-ink-500 py-8">说一句关心的话开始群聊吧～</div>
+            )}
+          </div>
+
+          {/* Quick replies */}
+          <div className="px-3 py-2 bg-white/70 border-t border-brand-100 flex gap-2 overflow-x-auto">
+            {QUICK_REPLIES.map((q) => (
+              <button
+                key={q}
+                onClick={() => setText(q)}
+                className="shrink-0 px-3 py-1.5 rounded-full bg-brand-50 border border-brand-200 text-sm hover:bg-brand-100"
+                style={{ minHeight: 36 }}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+
+          {/* Input bar */}
+          <div className="p-3 bg-white border-t border-brand-100 flex items-center gap-2">
+            <Select
+              value={asMemberId}
+              onChange={(e) => setAsMemberId(e.target.value)}
+              className="!min-h-[44px] !py-2 !w-32 shrink-0"
+              title="以谁的身份发送（演示用）"
+            >
+              {family.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </Select>
+            <TextInput
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+              placeholder="说点什么…"
+              className="!min-h-[44px] !py-2"
+            />
+            <Button onClick={send} className="shrink-0">发送</Button>
+          </div>
+        </section>
+      </div>
 
       {/* Add member modal */}
       <Modal
@@ -207,9 +303,7 @@ export function Family() {
         title="邀请家人"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setOpen(false)}>
-              取消
-            </Button>
+            <Button variant="ghost" onClick={() => setOpen(false)}>取消</Button>
             <Button
               onClick={async () => {
                 if (!name.trim()) return;
@@ -219,7 +313,7 @@ export function Family() {
                   relation,
                   phone: phone.trim() || undefined,
                   notify: true,
-                  avatarColor: ['#FF8C00', '#22A06B', '#1F6FEB', '#E5484D'][family.length % 4],
+                  avatarColor: ['#FF8C00', '#22A06B', '#1F6FEB', '#E5484D', '#9C5BD3'][family.length % 5],
                 });
                 setName('');
                 setPhone('');
@@ -255,41 +349,6 @@ export function Family() {
         <Field label="手机号（可选）">
           <TextInput value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="138****0001" />
         </Field>
-      </Modal>
-
-      {/* Cheer share modal */}
-      <Modal
-        open={cheerOpen}
-        onClose={() => setCheerOpen(false)}
-        title="发送到家庭群"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setCheerOpen(false)}>取消</Button>
-            <Button
-              onClick={async () => {
-                await pushFeed({
-                  type: 'cheer',
-                  title: cheerText,
-                  byMemberId: 'fm_son',
-                });
-                const r = await shareToFamily({
-                  title: '家庭关心',
-                  text: cheerText,
-                });
-                setCheerOpen(false);
-                setShareTip(
-                  r === 'shared' ? '已发送' : r === 'copied' ? '内容已复制，可粘贴到群' : '分享失败'
-                );
-                setTimeout(() => setShareTip(null), 2200);
-              }}
-            >
-              确认发送
-            </Button>
-          </>
-        }
-      >
-        <p className="text-ink-700">即将发送：</p>
-        <div className="card-yellow mt-3 text-lg font-semibold">{cheerText}</div>
       </Modal>
     </div>
   );

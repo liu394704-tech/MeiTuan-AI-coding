@@ -26,17 +26,17 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-brand-100">
+      <header className="sticky top-0 z-40 bg-hero-yellow border-b border-brand-300 shadow-soft">
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand-500 text-ink-900 flex items-center justify-center font-bold shadow-glow">
+            <div className="w-10 h-10 rounded-xl bg-white text-brand-700 flex items-center justify-center font-bold shadow-soft">
               药
             </div>
             <div>
               <h1 className="text-base md:text-lg font-bold text-ink-900 leading-none">
                 慢病用药小管家
               </h1>
-              <p className="text-xs text-ink-500 mt-0.5 hidden md:block">
+              <p className="text-xs text-ink-700/80 mt-0.5 hidden md:block">
                 让每一次服药都更有把握
               </p>
             </div>
@@ -44,11 +44,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <div className="hidden md:flex items-center gap-4 flex-1 max-w-md">
             <div className="flex-1">
-              <div className="flex justify-between text-xs text-ink-500 mb-1">
+              <div className="flex justify-between text-xs text-ink-700 mb-1">
                 <span>本周依从性</span>
-                <span className="font-semibold text-ink-700">{ad.score} 分</span>
+                <span className="font-semibold">{ad.score} 分</span>
               </div>
-              <div className="h-2 rounded-full bg-brand-50 overflow-hidden">
+              <div className="h-2 rounded-full bg-white/50 overflow-hidden">
                 <div
                   className={`h-full transition-all ${
                     ad.score >= 85 ? 'bg-success' : ad.score >= 60 ? 'bg-warning' : 'bg-danger'
@@ -64,21 +64,21 @@ export function AppShell({ children }: { children: ReactNode }) {
               onClick={() => setVoicePrefs({ enabled: !voicePrefs.enabled })}
               className={`px-3 rounded-lg font-medium text-sm transition-colors ${
                 voicePrefs.enabled
-                  ? 'bg-brand-500 text-ink-900'
-                  : 'bg-ink-100 text-ink-500'
+                  ? 'bg-white text-brand-800 shadow-sm'
+                  : 'bg-white/40 text-ink-700'
               }`}
               style={{ minHeight: 40 }}
               title={voicePrefs.enabled ? '语音已开' : '语音已关'}
             >
               {voicePrefs.enabled ? '🔊 语音' : '🔇 静音'}
             </button>
-            <div className="hidden sm:flex bg-brand-50 rounded-lg p-1 border border-brand-100">
+            <div className="hidden sm:flex bg-white/60 rounded-lg p-1 border border-white/70">
               {(['normal', 'large', 'xlarge'] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => setFontSize(s)}
                   className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
-                    fontSize === s ? 'bg-white shadow-sm text-brand-700' : 'text-ink-500'
+                    fontSize === s ? 'bg-white shadow-sm text-brand-800' : 'text-ink-700'
                   }`}
                   style={{ minHeight: 32 }}
                 >

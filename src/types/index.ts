@@ -113,7 +113,8 @@ export type FamilyEventType =
   | 'low_stock'
   | 'restock'
   | 'follow_up'
-  | 'cheer'; // 家人加油
+  | 'cheer'      // 家人留言（普通气泡）
+  | 'system';    // 系统提示（居中灰条）
 
 export interface FamilyFeedItem {
   id: string;

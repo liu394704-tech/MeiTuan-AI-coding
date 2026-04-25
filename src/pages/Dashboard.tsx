@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Tag } from '@/components/ui/Tag';
@@ -12,7 +13,6 @@ import { useAppStore } from '@/store';
 import { dayjs, fmtTime } from '@/utils/date';
 import { buildDosesIcs, downloadFile, shareToFamily } from '@/utils/share';
 import { pickSloganOfTheDay, HEALTH_ARTICLES } from '@/data/articles';
-import { useState } from 'react';
 
 export function Dashboard() {
   const user = useAppStore((s) => s.user);
@@ -24,6 +24,7 @@ export function Dashboard() {
   const events = useAppStore((s) => s.events);
   const meds = useAppStore((s) => s.medications);
   const familyFeed = useAppStore((s) => s.familyFeed);
+  const takeDose = useAppStore((s) => s.takeDose);
   const [tip, setTip] = useState<string | null>(null);
 
   const taken = doses.filter((d) => d.effectiveStatus === 'taken').length;
@@ -36,283 +37,274 @@ export function Dashboard() {
   const fuDays = nextFu ? dayjs(nextFu.scheduledDate).diff(dayjs(), 'day') : null;
   const slogan = pickSloganOfTheDay();
 
-  const hint = (() => {
-    if (lowStock.length > 0)
-      return `特别提醒：${lowStock[0].name} 仅够 ${lowStock[0].daysLeft} 天，请及时补药。`;
-    if (upcoming)
-      return `下一次服药时间 ${fmtTime(upcoming.scheduledAt)}，需要服 ${upcoming.medicationName} ${upcoming.dosage}${upcoming.unit}。`;
-    if (total > 0 && taken === total) return `今日 ${total} 次服药已全部完成，做得很棒。`;
-    return slogan;
-  })();
-
   const broadcastText =
-    `${greeting()}，${user?.name ?? ''}。` +
-    `今天需要服药 ${total} 次，已完成 ${taken} 次。` +
-    hint +
-    (nextFu ? ` 距离下一次复诊还有 ${fuDays} 天。` : '');
+    `${greeting()}，${user?.name ?? ''}。今天需要服药 ${total} 次，已完成 ${taken} 次。` +
+    (upcoming
+      ? `下一次：${fmtTime(upcoming.scheduledAt)} 服 ${upcoming.medicationName} ${upcoming.dosage}${upcoming.unit}。`
+      : '') +
+    (lowStock.length > 0
+      ? `特别提醒：${lowStock[0].name} 仅够 ${lowStock[0].daysLeft} 天，请尽快补药。`
+      : '') +
+    (nextFu ? `距离下一次复诊还有 ${fuDays} 天。` : '');
 
   function exportIcs() {
     const medMap = new Map(meds.map((m) => [m.id, { name: m.name, spec: m.spec }]));
     const ics = buildDosesIcs({ events, medMap });
-    downloadFile('chronic-med-doses.ics', ics, 'text/calendar');
-    setTip('日历文件已下载，请用"日历"App 打开导入');
-    setTimeout(() => setTip(null), 2400);
+    downloadFile('chronic-med-doses.ics', ics);
+    setTip('日历文件已下载，请用日历 App 导入');
+    setTimeout(() => setTip(null), 2200);
   }
 
   async function shareSummary() {
     const r = await shareToFamily({ title: '健康简报', text: broadcastText });
     setTip(r === 'shared' ? '已分享' : r === 'copied' ? '简报已复制，可粘贴到家庭群' : '分享失败');
-    setTimeout(() => setTip(null), 2400);
+    setTimeout(() => setTip(null), 2200);
   }
 
   const recommended = (() => {
     const conds = new Set(user?.conditions ?? []);
-    return HEALTH_ARTICLES.filter((a) => a.tags.some((t) => conds.has(t))).slice(0, 2);
+    return HEALTH_ARTICLES.filter((a) => a.tags.some((t) => conds.has(t)))[0];
   })();
 
+  const adColor = ad.score >= 85 ? 'text-success' : ad.score >= 60 ? 'text-warning' : 'text-danger';
+
   return (
-    <div className="space-y-6">
-      {/* Hero banner with slogan + voice + CTA */}
-      <section className="rounded-xl2 overflow-hidden shadow-soft">
-        <div className="bg-hero-yellow p-5 md:p-7 relative">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-brand-800">
-                {dayjs().format('YYYY年MM月DD日 dddd')}
-              </p>
-              <h2 className="text-2xl md:text-3xl font-bold text-ink-900 mt-1">
-                {greeting()}，{user?.name ?? ''}
-              </h2>
-              <p className="text-base md:text-lg text-ink-700 mt-3 font-medium leading-relaxed">
-                💛 {slogan}
-              </p>
-              <p className="text-ink-700 mt-2">{hint}</p>
+    <div className="space-y-5">
+      {/* 1. 极简问候条 */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <p className="text-xs md:text-sm text-ink-500">{dayjs().format('YYYY年M月D日 dddd')}</p>
+          <h2 className="text-2xl md:text-3xl font-bold text-ink-900 mt-1">
+            {greeting()}，{user?.name ?? ''}
+          </h2>
+          <p className="text-ink-500 mt-1 text-sm md:text-base">💛 {slogan}</p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <SpeakButton text={broadcastText} label="🔊 播报" />
+          <Button variant="secondary" size="lg" onClick={exportIcs}>📅 同步日历</Button>
+          <Button variant="secondary" size="lg" onClick={shareSummary}>👨‍👩‍👧 分享给家人</Button>
+        </div>
+      </div>
+
+      {tip && (
+        <div className="rounded-xl px-4 py-3 bg-brand-50 border border-brand-200 text-center text-ink-700 font-medium">
+          {tip}
+        </div>
+      )}
+
+      {/* 2. 头号焦点：下一次该吃什么 */}
+      <section className="rounded-xl2 shadow-soft border border-brand-200 overflow-hidden bg-white">
+        <div className="px-5 md:px-6 py-3 bg-brand-50 border-b border-brand-200 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">⏰</span>
+            <span className="font-semibold text-ink-900">下一次服药</span>
+          </div>
+          <Link to="/today" className="text-sm text-brand-700 font-semibold">
+            查看完整清单 →
+          </Link>
+        </div>
+        <div className="p-5 md:p-6">
+          {upcoming ? (
+            <div className="flex items-center gap-5 flex-wrap">
+              <div className="flex flex-col items-center justify-center bg-brand-50 rounded-2xl px-5 py-4 shrink-0 border border-brand-200">
+                <div className="text-xs text-ink-500">服药时间</div>
+                <div className="text-3xl md:text-4xl font-bold text-ink-900">{fmtTime(upcoming.scheduledAt)}</div>
+              </div>
+              <div className="flex-1 min-w-[180px]">
+                <div className="text-xl md:text-2xl font-semibold text-ink-900">{upcoming.medicationName}</div>
+                <div className="text-ink-500 mt-1">
+                  {upcoming.spec} · 单次 <span className="font-semibold text-ink-700">{upcoming.dosage} {upcoming.unit}</span>
+                </div>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <Button size="xl" onClick={() => takeDose(upcoming.id)}>
+                  ✓ 已服药
+                </Button>
+                <Link to="/today">
+                  <Button variant="secondary" size="lg">查看全部</Button>
+                </Link>
+              </div>
             </div>
-            <div className="flex flex-col gap-2 shrink-0">
-              <SpeakButton text={broadcastText} label="🔊 播报今日提醒" className="!bg-white" />
-              <Button variant="secondary" size="lg" onClick={exportIcs}>
-                📅 同步到日历
-              </Button>
-              <Button variant="secondary" size="lg" onClick={shareSummary}>
-                👨‍👩‍👧 同步到家庭群
-              </Button>
+          ) : total > 0 ? (
+            <div className="flex items-center gap-4">
+              <div className="text-5xl">🎉</div>
+              <div>
+                <div className="text-xl md:text-2xl font-bold text-success">今日服药已全部完成</div>
+                <div className="text-ink-500 mt-1">{total} 次服药全部按时完成，做得很棒！</div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-4">
+              <div className="text-5xl">📋</div>
+              <div>
+                <div className="text-xl font-bold text-ink-900">今日暂无服药安排</div>
+                <Link to="/medications/new" className="text-brand-700 font-semibold">添加第一种药品 →</Link>
+              </div>
+            </div>
+          )}
+
+          {/* progress strip */}
+          <div className="mt-5">
+            <div className="flex justify-between text-sm mb-1.5">
+              <span className="text-ink-500">今日进度</span>
+              <span className="font-semibold text-ink-700">{taken} / {total}</span>
+            </div>
+            <div className="h-2.5 rounded-full bg-brand-50 overflow-hidden">
+              <div
+                className="h-full bg-brand-500 transition-all"
+                style={{ width: `${total === 0 ? 100 : (taken / total) * 100}%` }}
+              />
             </div>
           </div>
         </div>
-        {tip && (
-          <div className="bg-brand-50 px-5 py-3 text-center text-ink-700 font-medium border-t border-brand-100">
-            {tip}
-          </div>
-        )}
       </section>
 
-      {/* Golden 3 cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-        <Card
-          className="md:col-span-2"
-          title="今日服药"
-          action={
-            <Link to="/today" className="text-sm text-brand-700 font-semibold">
-              查看全部 →
-            </Link>
-          }
-        >
-          <div className="flex items-center gap-6 flex-wrap">
-            <AdherenceRing score={total === 0 ? 100 : Math.round((taken / total) * 100)} size={120} />
-            <div className="flex-1 min-w-0">
-              <div className="text-3xl font-bold text-ink-900">
-                {taken}
-                <span className="text-base font-normal text-ink-500"> / {total} 次</span>
+      {/* 3. 关键预警（只在有事时出现，最显眼） */}
+      {(lowStock.length > 0 || (insights[0] && insights[0].level === 'danger')) && (
+        <section className="rounded-xl2 border border-red-200 bg-red-50 px-5 py-4">
+          <div className="flex items-start gap-3">
+            <div className="text-2xl">⚠️</div>
+            <div className="flex-1">
+              <div className="font-semibold text-danger mb-1">需要立即关注</div>
+              <ul className="space-y-1 text-ink-900">
+                {lowStock.slice(0, 2).map((s) => (
+                  <li key={s.medicationId}>
+                    <span className="font-semibold">{s.name}</span>
+                    <span className="text-ink-700"> 库存仅够 {s.daysLeft} 天，请尽快补药。</span>
+                  </li>
+                ))}
+                {insights[0]?.level === 'danger' && <li className="text-ink-900">{insights[0].title}</li>}
+              </ul>
+              <div className="mt-3 flex gap-2 flex-wrap">
+                {lowStock.length > 0 && (
+                  <Link to="/inventory">
+                    <Button size="md">去补药</Button>
+                  </Link>
+                )}
+                <Link to="/insights">
+                  <Button variant="secondary" size="md">查看全部建议</Button>
+                </Link>
               </div>
-              {upcoming ? (
-                <p className="mt-2 text-ink-700">
-                  下一次：<span className="font-semibold">{upcoming.medicationName}</span>{' '}
-                  · {fmtTime(upcoming.scheduledAt)}
-                </p>
-              ) : total > 0 ? (
-                <p className="mt-2 text-success font-medium">今日服药已全部完成 🎉</p>
-              ) : (
-                <p className="mt-2 text-ink-500">今日暂无服药安排</p>
-              )}
-              <Link to="/today">
-                <Button className="mt-4" size="lg">
-                  去打卡
-                </Button>
-              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 4. 三件次要信息：依从性 / 复诊 / 推文 */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <div className="flex items-center gap-4">
+            <AdherenceRing score={ad.score} size={86} />
+            <div className="flex-1 min-w-0">
+              <div className="text-sm text-ink-500">本周依从性</div>
+              <div className={`text-2xl font-bold ${adColor}`}>{ad.score}<span className="text-sm font-normal text-ink-500"> 分</span></div>
+              <div className="text-xs text-ink-500 mt-0.5">{ad.taken} / {ad.scheduled} 次{ad.missed > 0 ? `，漏 ${ad.missed} 次` : ''}</div>
             </div>
           </div>
         </Card>
 
-        <Card title="本周依从性">
-          <div className="flex flex-col items-center">
-            <AdherenceRing score={ad.score} size={140} />
-            <p className="text-sm text-ink-500 mt-3 text-center">
-              过去 7 天 {ad.taken} / {ad.scheduled} 次
-              {ad.missed > 0 && <>，漏服 {ad.missed} 次</>}
-            </p>
-          </div>
-        </Card>
-      </div>
-
-      {/* Inventory + FollowUp */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-        <Card
-          title="库存预警"
-          action={
-            <Link to="/inventory" className="text-sm text-brand-700 font-semibold">
-              管理 →
-            </Link>
-          }
-        >
-          {lowStock.length === 0 ? (
-            <p className="text-ink-500">库存充足，暂无预警 ✅</p>
-          ) : (
-            <div className="space-y-3">
-              {lowStock.map((s) => (
-                <div
-                  key={s.medicationId}
-                  className="flex items-center justify-between p-3 rounded-lg bg-red-50/60 border border-red-100"
-                >
-                  <div>
-                    <div className="font-semibold">{s.name}</div>
-                    <div className="text-sm text-ink-500">
-                      剩余 {s.quantity} {s.unit}
+        <Link to="/follow-up">
+          <Card className="hover:shadow-glow transition-shadow h-full">
+            <div className="flex items-center gap-4">
+              <div className="text-4xl">🩺</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm text-ink-500">下次复诊</div>
+                {nextFu ? (
+                  <>
+                    <div className="text-2xl font-bold text-ink-900">
+                      {fuDays! <= 0 ? '今天' : `${fuDays} 天后`}
                     </div>
-                  </div>
-                  <Tag variant={s.daysLeft <= 1 ? 'danger' : 'warn'}>仅够 {s.daysLeft} 天</Tag>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-
-        <Card
-          title="复诊提醒"
-          action={
-            <Link to="/follow-up" className="text-sm text-brand-700 font-semibold">
-              安排 →
-            </Link>
-          }
-        >
-          {!nextFu ? (
-            <p className="text-ink-500">暂无复诊安排</p>
-          ) : (
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-ink-900">
-                  {fuDays! <= 0 ? '今天' : `${fuDays} 天后`}
-                </div>
-                <div className="text-sm text-ink-500 mt-1">
-                  {nextFu.scheduledDate} · {nextFu.hospital ?? ''} {nextFu.department ?? ''}
-                </div>
-                {nextFu.reason && (
-                  <div className="text-sm text-ink-700 mt-1">事由：{nextFu.reason}</div>
+                    <div className="text-xs text-ink-500 mt-0.5 truncate">
+                      {nextFu.scheduledDate} · {nextFu.hospital ?? ''}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-base font-semibold text-ink-700 mt-1">暂无安排</div>
                 )}
               </div>
-              <div className="text-5xl">🩺</div>
             </div>
-          )}
-        </Card>
+          </Card>
+        </Link>
+
+        <Link to="/articles">
+          <Card className="hover:shadow-glow transition-shadow h-full">
+            <div className="flex items-center gap-4">
+              <div className="text-4xl">{recommended?.emoji ?? '📰'}</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm text-ink-500">今日推文</div>
+                <div className="font-semibold text-ink-900 truncate mt-0.5">
+                  {recommended?.title ?? '前往健康推文'}
+                </div>
+                {recommended && <div className="text-xs text-ink-500 mt-0.5 line-clamp-1">{recommended.summary}</div>}
+              </div>
+            </div>
+          </Card>
+        </Link>
       </div>
 
-      {/* Family + Articles preview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-        <Card
-          title="家庭动态"
-          action={
-            <Link to="/family" className="text-sm text-brand-700 font-semibold">
-              进入家庭群 →
-            </Link>
-          }
-        >
-          {familyFeed.length === 0 ? (
-            <p className="text-ink-500">家庭群暂无动态。邀请家人加入吧。</p>
-          ) : (
-            <ul className="space-y-2">
-              {familyFeed.slice(0, 3).map((f) => (
-                <li
-                  key={f.id}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-brand-50/60 border border-brand-100"
-                >
-                  <div className="text-2xl">
-                    {f.type === 'cheer' ? '❤️' : f.type === 'low_stock' ? '📦' : '✅'}
+      {/* 5. 家庭群最新一条 */}
+      <Card
+        title="家庭群"
+        action={
+          <Link to="/family" className="text-sm text-brand-700 font-semibold">
+            进入群聊 →
+          </Link>
+        }
+      >
+        {familyFeed.length === 0 ? (
+          <p className="text-ink-500">家庭群暂无消息。</p>
+        ) : (
+          <ul className="space-y-2">
+            {[...familyFeed]
+              .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+              .filter((f) => f.type !== 'system')
+              .slice(0, 2)
+              .map((f) => (
+                <li key={f.id} className="flex items-start gap-3">
+                  <div className="text-xl shrink-0">
+                    {f.type === 'cheer' ? '💬' : f.type === 'low_stock' ? '📦' : f.type === 'restock' ? '🛒' : '✅'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium">{f.title}</div>
-                    <div className="text-xs text-ink-500 mt-0.5">
-                      {dayjs(f.createdAt).format('MM-DD HH:mm')}
-                    </div>
+                    <div className="text-ink-900 truncate">{f.title}</div>
+                    <div className="text-xs text-ink-500 mt-0.5">{dayjs(f.createdAt).format('MM-DD HH:mm')}</div>
                   </div>
                 </li>
               ))}
-            </ul>
-          )}
-        </Card>
+          </ul>
+        )}
+      </Card>
 
-        <Card
-          title="今日健康推文"
-          action={
-            <Link to="/articles" className="text-sm text-brand-700 font-semibold">
-              更多推文 →
-            </Link>
-          }
-        >
-          {recommended.length === 0 ? (
-            <p className="text-ink-500">暂无推荐，去"健康推文"看看吧。</p>
-          ) : (
-            <ul className="space-y-3">
-              {recommended.map((a) => (
-                <li
-                  key={a.id}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-brand-50/60 border border-brand-100"
-                >
-                  <div className="text-3xl">{a.emoji}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold">{a.title}</div>
-                    <p className="text-sm text-ink-700 mt-0.5 line-clamp-2">{a.summary}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
-
-      {/* AI Insights preview */}
-      {insights.length > 0 && (
+      {/* 6. 关键提示 (insight 中的 warn 折叠次屏) */}
+      {insights.filter((i) => i.level !== 'danger').length > 0 && (
         <Card
           title="AI 健康助手"
           action={
             <Link to="/insights" className="text-sm text-brand-700 font-semibold">
-              全部建议 →
+              更多建议 →
             </Link>
           }
         >
           <div className="space-y-3">
-            {insights.slice(0, 3).map((i) => (
-              <div
-                key={i.id}
-                className="flex items-start gap-3 p-3 rounded-lg bg-brand-50/60 border border-brand-100"
-              >
-                <div className="text-2xl">
-                  {i.type === 'adherence'
-                    ? '📈'
-                    : i.type === 'stock'
-                    ? '📦'
-                    : i.type === 'risk'
-                    ? '⚠️'
-                    : '💡'}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="font-semibold">{i.title}</h4>
-                    {i.level === 'danger' && <Tag variant="danger">紧急</Tag>}
-                    {i.level === 'warn' && <Tag variant="warn">注意</Tag>}
+            {insights
+              .filter((i) => i.level !== 'danger')
+              .slice(0, 2)
+              .map((i) => (
+                <div
+                  key={i.id}
+                  className="flex items-start gap-3 p-3 rounded-lg bg-brand-50/50 border border-brand-100"
+                >
+                  <div className="text-xl shrink-0">
+                    {i.type === 'adherence' ? '📈' : i.type === 'stock' ? '📦' : i.type === 'risk' ? '⚠️' : '💡'}
                   </div>
-                  <p className="text-sm text-ink-700 mt-1">{i.body}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="font-semibold">{i.title}</h4>
+                      {i.level === 'warn' && <Tag variant="warn">注意</Tag>}
+                    </div>
+                    <p className="text-sm text-ink-700 mt-0.5">{i.body}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         </Card>
       )}
